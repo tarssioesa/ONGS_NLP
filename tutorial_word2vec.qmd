@@ -1,0 +1,153 @@
+---
+title: "Doc2vec"
+format: html
+editor: visual
+---
+
+### Objetivo:
+
+Temos aqui um breve tutorial do Word2vec. Algoritmo baseado em contexto para criaçào de `embeddings`, formas vetoriais e númericas, de representação das palavras.
+
+Este tipo de técnica foi particularmente útil em projetos nos quais tinhamos uma ideia de quais palavras-chaves precisavam ser buscada, porém precisavamos descobrir outras relacionadas.
+
+Por exemplo, ao tentarmos buscar `meio ambiente` ou `ESG` nos jornais, podemos perceber que as palavras `descabornização` ou `hidrogênio verde` estão fortemente associadas às nossas palavras chaves iniciais. Indicando, talvez, uma predileção deste tipo de mídia por debates relacionados, provavelmente, a cadeia de produção industrial.
+
+### Word2vec
+
+[Word2vec](https://www.analyticsvidhya.com/blog/2021/07/word2vec-for-word-embeddings-a-beginners-guide/): Algoritmo baseado em SKIP-GRAM, neste modelo os pesos do modelo buscam maximizar a probabilidade de predizer o contexto a partir de uma palavra chave. Mas como funciona isto?
+
+Vamos pensar, inicialmente, numa frase típica:
+
+::: {style="text-align: center;"}
+`O [gato] pulou o muro a noite`
+:::
+
+Então vamos tentar advinhar o contexto atráves de uma palavra central:
+
+::: {style="text-align: left;"}
+`[...] gato [...]`
+:::
+
+Poderiamos dividir as possibilidades de acordo com o que achamos mais provável:
+
+-   Alta probabilidade: O \[gato\] saltou, O \[gato\] pulou, o \[gato\] subiu;
+
+-   Baixissima ou zero: O \[gato\] latiu.
+
+Esta é a primeira rodada de otimização dos pesos da rede neural construida para criar nossos embeddings. Depois é realizado um processo de janelas móveis:
+
+::: {style="text-align: left;"}
+`[...] pulou [...]`
+:::
+
+Poderiamos dividir as possibilidades de acordo com o que achamos mais provável:
+
+-   Alta probabilidade: O gato \[pulou\] o muro, O ladrão \[pulou\] a cerca;
+
+-   Baixissima ou zero: O carro \[pulou\] a parede;
+
+A partir destas rodadas de busca de contextos, buscamos otimizar as probabilidades de cada palavra predizer seus prováveis contextos. A partir disto são determinados os pesos da rede neural criada e da camada de `embeddings` é possível obter a representação de cada uma das palavras.
+
+### Dados:
+
+Utilizamos aqui dados de ONGS\[https://www.globalgiving.org/\] e sua breve descrição em texto.
+
+### Carregando bibliotecas e banco de dados
+
+Veja abaixo um exemplo de descrição da ONG: `Empower a Girl: For Self-Reliance`. ONG que busca incluir a educação financeira doméstica no currículo educacional de Kole.
+
+```{r message=FALSE, warning=FALSE}
+
+require(tidyverse)
+require(word2vec)
+require(tm)
+require(data.table)
+require(RColorBrewer)
+require(plotly)
+require(tm)
+### carregando banco de dados
+
+df <- read.csv("data/banco_ongs_join.csv", sep = ",") |> 
+  select(-1) |> 
+  distinct_all()
+
+### transformando todas as letras em minúsculas
+mensagens_de_texto <- df |> 
+  select(titulo, descricao)  |> 
+  rename(text = 2 , 
+         doc_id = 1) |> 
+  mutate(text = tolower(text))
+
+mensagens_de_texto$text[1]
+
+```
+
+### Criando modelo de embeddings
+
+Abaixo é criado o modelo de word2vec para `embedding` das palavras usando skip-gram e representando as palavras em `128 dimensões`:
+
+```{r message=FALSE, warning=FALSE}
+
+model <- word2vec(x = mensagens_de_texto$text, type = "skip-gram", dim = 128)
+```
+
+A partir deste momento podemos conferir a representação vetorial das palavras:
+
+```{r message=FALSE, warning=FALSE}
+
+predict(model, c("education"), type = "embedding")
+
+```
+
+Mais interessante que esta representação, neste momento, é encontrar palavras que estão próximas a outras.
+
+Começamos pela palavra `floresta`. Temos aqui a relação desta com: habitats, rios, florestas pluvial, queimadas e etc... Podemos inferir que parte das ONGs que trabalham com florestas estão relacionadas a conservação dos rios, combate às queimadas e preservação de reservas naturais.
+
+```{r message=FALSE, warning=FALSE}
+predict(model, c("forest"), type = "nearest", top_n = 10)
+
+```
+
+Quanto a educação, vemos questões como: desistência, educação holística, bilingue e etc...
+
+```{r message=FALSE, warning=FALSE}
+
+predict(model, c("education"), type = "nearest", top_n = 10)
+
+```
+
+### Analogias
+
+Uma das possibilidades do `word2vec` é a de realizar analogias. Ou seja: somar ou subtrair palavras e obter um outro termo relacionado a esta operação. Um bom exemplo seria:
+
+::: {style="text-align: left;"}
+`[Rei] - [Homem] + [Mulher] = [Rainha]`
+:::
+
+Criemos as nossas: 
+
+```{r message=FALSE, warning=FALSE}
+
+wv <- predict(model, newdata = c("girl", "health"), type = "embedding")
+
+wv <- wv["girl", ] + wv["health", ]
+
+predict(model, newdata = wv, type = "nearest", top_n = 5)
+```
+
+A analogia entre ```MENINAS + SAÚDE```, entre outras respostas, traz a questão do tabu que está associado a mestruação. Ou a países onde há ONGS focadas na saúde ou combate ao assédio sexual contra mulheres.
+
+```{r message=FALSE, warning=FALSE}
+
+wv <- predict(model, newdata = c("poverty", "health"), type = "embedding")
+
+wv <- wv["poverty", ] - wv["health", ]
+
+predict(model, newdata = wv, type = "nearest", top_n = 5)
+```
+
+A operação entre pobreza e saúde, por sua vez, apresenta termos relacionados ao ciclo extremo da pobreza, no qual está inserido uma alta vulnerabilidade da saúde.
+
+### Conclusão: 
+
+O uso do ```word2vec``` é de grande valia no estudo de Processamento de Linguagem Natural (NLP). Tendo grande utilidade para encontrar palavras que possuem proximidade de contexto ou gerando analogias que possam contribuir na reflexão sobre determinado conjunto de documentos.
