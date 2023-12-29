@@ -5,6 +5,6 @@ Este repositório tem como objetivo trabalhar técnicas de NLP para o conjunto d
 Os arquivos com estes códigos estarão grafados com a inicial ```tutorial```
 ## Disponíveis até o momento: 
 
-* Word2vec
+* [Word2vec](https://github.com/tarssioesa/ONGS_NLP/blob/main/tutorial_word2vec.qmd)
 
 <img src="https://i.ibb.co/JHDFNmM/wordcloud.png" alt="wordcloud" border="0">
