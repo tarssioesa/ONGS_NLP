@@ -6,5 +6,6 @@ Os arquivos com estes códigos estarão grafados com a inicial ```tutorial```
 ## Disponíveis até o momento: 
 
 * [Word2vec](https://github.com/tarssioesa/ONGS_NLP/blob/main/tutorial_word2vec.qmd)
+* [Doc2vec](https://github.com/tarssioesa/ONGS_NLP/blob/main/tutorial_doc2vec.qmd)
 
 <img src="https://i.ibb.co/JHDFNmM/wordcloud.png" alt="wordcloud" border="0">
