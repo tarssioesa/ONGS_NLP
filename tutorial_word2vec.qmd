@@ -1,5 +1,5 @@
 ---
-title: "Doc2vec"
+title: "Word2vec"
 format: html
 editor: visual
 ---
@@ -50,7 +50,7 @@ A partir destas rodadas de busca de contextos, buscamos otimizar as probabilidad
 
 ### Dados:
 
-Utilizamos aqui dados de ONGS\[https://www.globalgiving.org/\] e sua breve descrição em texto.
+Utilizamos aqui dados de [ONGS](https://www.globalgiving.org/)e sua breve descrição em texto.
 
 ### Carregando bibliotecas e banco de dados
 
@@ -124,7 +124,7 @@ Uma das possibilidades do `word2vec` é a de realizar analogias. Ou seja: somar 
 `[Rei] - [Homem] + [Mulher] = [Rainha]`
 :::
 
-Criemos as nossas: 
+Criemos as nossas:
 
 ```{r message=FALSE, warning=FALSE}
 
@@ -135,7 +135,7 @@ wv <- wv["girl", ] + wv["health", ]
 predict(model, newdata = wv, type = "nearest", top_n = 5)
 ```
 
-A analogia entre ```MENINAS + SAÚDE```, entre outras respostas, traz a questão do tabu que está associado a mestruação. Ou a países onde há ONGS focadas na saúde ou combate ao assédio sexual contra mulheres.
+A analogia entre `MENINAS + SAÚDE`, entre outras respostas, traz a questão do tabu que está associado a mestruação. Ou a países onde há ONGS focadas na saúde ou combate ao assédio sexual contra mulheres.
 
 ```{r message=FALSE, warning=FALSE}
 
@@ -148,6 +148,6 @@ predict(model, newdata = wv, type = "nearest", top_n = 5)
 
 A operação entre pobreza e saúde, por sua vez, apresenta termos relacionados ao ciclo extremo da pobreza, no qual está inserido uma alta vulnerabilidade da saúde.
 
-### Conclusão: 
+### Conclusão:
 
-O uso do ```word2vec``` é de grande valia no estudo de Processamento de Linguagem Natural (NLP). Tendo grande utilidade para encontrar palavras que possuem proximidade de contexto ou gerando analogias que possam contribuir na reflexão sobre determinado conjunto de documentos.
+O uso do `word2vec` é de grande valia no estudo de Processamento de Linguagem Natural (NLP). Tendo grande utilidade para encontrar palavras que possuem proximidade de contexto ou gerando analogias que possam contribuir na reflexão sobre determinado conjunto de documentos.

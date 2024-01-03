@@ -1,0 +1,204 @@
+---
+title: "Doc2vec"
+format: html
+editor: visual
+---
+
+### Objetivo:
+
+Temos aqui um breve tutorial do doc2vec. Algoritmo baseado em contexto para criaçào de `embeddings`, formas vetoriais e númericas, de representação das palavras e dos documentos.
+
+É importante começar dando uma olhadinha no arquivo sobre Word2vec que foi feito anteriormente: https://github.com/tarssioesa/ONGS_NLP
+
+### Doc2vec
+
+Aqui utilizamos o algoritmo DBOW para criar o vetor numérico que designa cada um dos documentos. Neste processo, para cada palavra em um determinado documento, o seu contexto é utilizado para prever o vetor que representa aquele documento. Logo, a otimização deste modelo é baseada em atualizar os pesos da camada de `embeddings` que representa cada documento e cada palavra, tal que se maximize a probabilidade de cada documento receber determinada palavra que o pertença.
+
+Isto pode ser traduzido como: `Palavras atraem documentos similares a ela, enquanto repele documentos dissimilares"` ([Angelov, 2020](https://arxiv.org/pdf/2008.09470.pdf)).
+
+### Dados:
+
+Utilizamos aqui dados de [ONGS](https://www.globalgiving.org/)e sua breve descrição em texto.
+
+### Carregando bibliotecas e banco de dados
+
+Veja abaixo um exemplo de descrição da ONG: `Empower a Girl: For Self-Reliance`. ONG que busca incluir a educação financeira doméstica no currículo educacional de Kole.
+
+```{r message=FALSE, warning=FALSE}
+
+require(tidyverse)
+require(word2vec)
+require(tm)
+require(data.table)
+require(RColorBrewer)
+require(plotly)
+require(tm)
+library(doc2vec)
+library(Rtsne)
+library(DT)
+
+### carregando banco de dados
+
+df <- read.csv("data/banco_ongs_join.csv", sep = ",") |> 
+  select(-1) |> 
+  distinct_all()
+
+### transformando todas as letras em minúsculas
+mensagens_de_texto <- df |> 
+  select(titulo, descricao)  |> 
+  rename(text = 2) |> 
+  mutate(text = tolower(text)) |> 
+  mutate(doc_id = seq(1:n()))
+
+mensagens_de_texto$text[1]
+
+```
+
+### Criando modelo de embeddings
+
+```{r message=FALSE, warning=FALSE}
+
+### MODELO TOP2vec
+
+model <- paragraph2vec(mensagens_de_texto, type = "PV-DBOW", dim = 300L, iter = 40L,
+                       hs = TRUE, window = 15L, negative = 0L, sample = 0.00001,
+                       min_count = 10, lr = 0.05, threads = 4L)
+
+
+# Embeddings: 
+
+embeddings_docs <- as.matrix(model, which = "docs")
+
+embeddings_words <- as.matrix(model, which = "words")
+
+```
+
+### Palavras similares
+
+Assim, como o [word2vec](https://github.com/tarssioesa/ONGS_NLP/blob/main/tutorial_word2vec.qmd) obtemos que as ONGS que possuem projetos ligados a floresta pautam suas atividades em questões como a proteção e restauração dos ecossistemas. É possível inferir, também, que estas se concentram em reservas.
+
+```{r message=FALSE, warning=FALSE}
+
+predict(model, newdata = c("forest"), type = "nearest", 
+              which = "word2word", top_n = 10)
+
+```
+
+### Documentos similares a uma palavra:
+
+Como todos os documentos também possuem sua representação numérica, podemos encontrar quais documentos são mais similares a determinada palavra. No caso de floresta, podemos ver que há uma aderência total entre os documentos citados e o tema em questão.
+
+```{r message=FALSE, warning=FALSE}
+
+predict(model, newdata = c("forest"), type = "nearest", 
+              which = "word2doc", top_n = 10) |> 
+  map_dfr(data.frame) |> 
+  rename(doc_id = term2) |> 
+  left_join(mensagens_de_texto |> 
+              mutate(doc_id = as.character(doc_id))) |> 
+  select(term1, titulo, similarity, rank)
+
+```
+
+Podemos fazer algo semelhante, mas buscando por 'estudantes':
+
+```{r message=FALSE, warning=FALSE}
+
+predict(model, newdata = c("student"), type = "nearest", 
+              which = "word2doc", top_n = 10) |> 
+  map_dfr(data.frame) |> 
+  rename(doc_id = term2) |> 
+  left_join(mensagens_de_texto |> 
+              mutate(doc_id = as.character(doc_id))) |> 
+  select(term1, titulo, similarity, rank)
+
+```
+
+### Agrupando documentos:
+
+Uma vez que temos a representação númerica destes documentos podemos utilizar técnicas de agrupamento. É uma estratégia particularmente interessante quando se deseja explorar os grandes tópicos que há em um conjunto de dados. Para isto, será utilizado o `HDBSCAN`.
+
+O algoritmo HDBSCAN (Hierarchical Density-Based Spatial Clustering of Applications with Noise) é um algoritmo de agrupamento não supervisionado que identifica clusters com base na densidade de pontos. Ele funciona da seguinte forma:
+
+-   Cada ponto do conjunto de dados é inicialmente marcado como um ponto de acesso.
+-   A partir dos pontos de acesso, são criados clusters de pontos vizinhos que possuem densidade mínima.
+-   Os clusters são então combinados de acordo com a densidade, formando uma hierarquia de clusters.
+
+O HDBSCAN é uma boa opção para agrupamentos com clusters de formas irregulares ou que não são convexos, sendo capaz, também, de identificar outliers. Tendo como vantagens:
+
+-   A capacidade de identificar clusters de qualquer forma ou tamanho.
+-   A capacidade de identificar outliers.
+-   É relativamente rápido e eficiente.
+
+```{r message=FALSE, warning=FALSE}
+
+### CRIAÇÃO DO CLUSTER: 
+
+cl <- dbscan::hdbscan(embeddings_docs, minPts = 10)
+
+```
+
+Para possibilitar a visualização dos agrupamentos será utilizado o algoritmo t-SNE para a redução de dimensionalidade para duas dimensões.
+
+O t-SNE é um algoritmo utilizado para reduz a dimensionalidade de dados complexos, facilitando a visualização e a identificação de padrões. É particularmente útil para visualizar dados de alta dimensão em 2 ou 3 dimensões.
+
+Um pseudo-procedimento de funcionamento deste algoritmo é apresentado abaixo:
+
+- Cria-se uma distribuição de probabilidade no espaço de alta dimensão. A partir da similaridade de cada par de pontos, usando a distância euclidiana. Esta similaridade é então transformada em probabilidade, a partir da modelagem de cada vizinhança através de uma distribuição gaussiana;
+
+- Ajusta-se esta distribuição para outra no espaço de baixa dimensão.
+
+Características principais:
+
+- Não linear: Captura relações não lineares nos dados, diferentemente da PCA, que é linear. 
+
+- Estocástico: Introduz aleatoriedade no processo de otimização, ajudando a escapar de mínimos locais. 
+
+- Parametrizado: Ajustável por meio da "perplexidade".
+
+Vamos aplicar o t-SNE e o apresentar graficamente: 
+
+```{r message=FALSE, warning=FALSE}
+
+### CRIAÇÃO DO CLUSTER: 
+
+docs_tnse <- Rtsne(embeddings_docs, dims = 2, 
+                   perplexity= 30, verbose=TRUE, 
+                   max_iter = 500)
+```
+
+Criando nosso banco de dados com os grupos e coordenadas: 
+
+```{r message=FALSE, warning=FALSE}
+
+### Geramos o banco de dados com a representação dos clusters: 
+
+rep_clusters <- data.frame(docs_tnse[["Y"]]) |> 
+  mutate(cluster = cl$cluster) |>  ### buscando clusters do hdbscan
+  mutate(doc_id = as.character(seq(1, n()))) |> 
+  left_join(mensagens_de_texto |> 
+              mutate(doc_id = as.character(doc_id)))
+
+DT::datatable(rep_clusters)
+
+```
+
+Criando gráfico: 
+
+```{r message=FALSE, warning=FALSE}
+
+p1 <- rep_clusters |> 
+  filter(cluster != 0) |> 
+  mutate(cluster = as.factor(cluster)) |> 
+  ggplot(aes(x = X1, y = X2, col = cluster, label = titulo)) + 
+  geom_point() + 
+  theme_bw()
+
+ggplotly(p1)
+
+```
+
+O agrupamento final não se apresentou com alta qualidade. Podemos pensar que há textos muitos parecidos para algumas ONGS o que acaba prejudicando a geração dos clusters. Fora isto, há um grande número de textos sem agrupamentos.
+
+O próximo passo será utilizar o ```bertopics``` para a criação de agrupamentos.
+
