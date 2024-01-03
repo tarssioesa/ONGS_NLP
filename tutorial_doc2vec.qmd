@@ -18,7 +18,7 @@ Isto pode ser traduzido como: `Palavras atraem documentos similares a ela, enqua
 
 ### Dados:
 
-Utilizamos aqui dados de [ONGS](https://www.globalgiving.org/)e sua breve descrição em texto.
+Utilizamos aqui dados de [ONGS](https://www.globalgiving.org/) e sua breve descrição em texto.
 
 ### Carregando bibliotecas e banco de dados
 
