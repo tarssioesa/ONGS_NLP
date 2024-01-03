@@ -7,4 +7,4 @@ Os arquivos com estes códigos estarão grafados com a inicial ```tutorial```.
 
 * [Word2vec](https://github.com/tarssioesa/ONGS_NLP/blob/main/tutorial_word2vec.qmd)
 * [Doc2vec](https://github.com/tarssioesa/ONGS_NLP/blob/main/tutorial_doc2vec.qmd)
-
+* [BERTopic](https://github.com/tarssioesa/ONGS_NLP/blob/main/tutorial_bertopics.ipynb)
